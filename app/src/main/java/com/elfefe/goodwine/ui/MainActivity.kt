@@ -128,6 +128,9 @@ class MainActivity : ComponentActivity() {
             Content()
         }
 
+        // TODO:
+        connectGoogle()
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
         ) {
