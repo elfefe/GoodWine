@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">GoodWine</string>
+    <string name="client_id">1084474255415-666rsbbp9kvn3sqptklhv0clmmtu35ut.apps.googleusercontent.com</string>
+    <string name="connection_google_failure">Failed to connect with google account.</string>
+    <string name="connection_create_account_failure">Failed to create Account.</string>
+    <string name="connection_connect_account_failure">Failed to connect Account.</string>
+</resources>
