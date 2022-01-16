@@ -1,27 +1,20 @@
 package com.elfefe.goodwine.ui
 
-import android.Manifest
+import android.Manifest.permission.CAMERA
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
-import android.view.KeyEvent
-import android.view.MenuItem
 import androidx.activity.ComponentActivity
-import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateSizeAsState
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,6 +26,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -46,16 +40,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.layoutId
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.layout.*
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.SoftwareKeyboardController
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
@@ -65,19 +59,14 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.ConstraintSet
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
-import com.elfefe.goodwine.R
 import com.elfefe.goodwine.databinding.CameraViewBinding
-import com.elfefe.goodwine.mvvm.repository.FirebaseRepository
 import com.elfefe.goodwine.mvvm.viewmodel.CameraViewmodel
 import com.elfefe.goodwine.mvvm.viewmodel.FirebaseViewmodel
 import com.elfefe.goodwine.mvvm.viewmodel.OltpViewmodel
 import com.elfefe.goodwine.mvvm.viewmodel.UiViewmodel
 import com.elfefe.goodwine.oltp.parcelable.Bottle
 import com.elfefe.goodwine.ui.theme.GoodWineTheme
-import com.elfefe.goodwine.utils.enums.Connection
-import com.elfefe.goodwine.utils.resString
-import com.elfefe.goodwine.utils.saveImage
-import com.elfefe.goodwine.utils.timestamp
+import com.elfefe.goodwine.utils.*
 import com.gowtham.ratingbar.RatingBar
 import com.gowtham.ratingbar.StepSize
 
@@ -88,31 +77,16 @@ class MainActivity : ComponentActivity() {
     private val oltpViewmodel: OltpViewmodel by viewModels()
     private val firebaseViewmodel: FirebaseViewmodel by viewModels()
 
-    private val registerPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) {
-//                googleConnection()
-                firebaseViewmodel.setConnection(Connection.Success)
-            } else askPermission()
-        }
-    private val googleConnection = FirebaseRepository.connectGoogle(
-        activity = this,
-        onSuccess = {
-            firebaseViewmodel.setConnection(Connection.Success)
-        },
-        onFailure = {
-            firebaseViewmodel.setConnection(
-                Connection.Failure(
-                    it ?: Exception(resString(R.string.connection_google_failure))
-                )
-            )
-            connectGoogle()
-        }
-    )
-
     @OptIn(ExperimentalComposeUiApi::class)
     private lateinit var keyboardController: SoftwareKeyboardController
     private lateinit var localFocus: FocusManager
+
+    private val registerPermission =
+        registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+            askPermission(permissions.keys.toTypedArray())
+        }
 
     @SuppressLint("WrongConstant")
     @RequiresApi(Build.VERSION_CODES.R)
@@ -128,27 +102,28 @@ class MainActivity : ComponentActivity() {
             Content()
         }
 
-        // TODO:
-        connectGoogle()
-
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            askPermission()
-        } else {
-            firebaseViewmodel.setConnection(Connection.Success)
-//            connectGoogle()
+        firebaseViewmodel.connect()
+        firebaseViewmodel.connectionLivedata.observe(this) {
+            println("CONNECTION $it ${firebaseViewmodel.user?.run { ".$displayName .$tenantId .$providerId .$uid" }}")
         }
+
+        askPermission(arrayOf(CAMERA))
 
         uiViewmodel.setBottle(true)
     }
 
-    private fun askPermission() {
-        registerPermission.launch(Manifest.permission.CAMERA)
-    }
-
-    private fun connectGoogle() {
-        googleConnection()
+    private fun askPermission(permissions: Array<String>) {
+        permissions
+            .filter {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    it
+                ) == PackageManager.PERMISSION_DENIED
+            }
+            .run {
+                if (isEmpty()) uiViewmodel.setPermitted(true)
+                else registerPermission.launch(toTypedArray())
+            }
     }
 
     @OptIn(ExperimentalComposeUiApi::class)
@@ -176,15 +151,15 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun Content(modifier: Modifier = Modifier) {
-        var isConnected by remember {
+        var isPermitted by remember {
             mutableStateOf(false)
         }
 
-        val loadingAlpha by animateFloatAsState(targetValue = if (isConnected) 0f else 1f)
-        val mainAlpha by animateFloatAsState(targetValue = if (isConnected && loadingAlpha == 0f) 1f else 0f)
+        val loadingAlpha by animateFloatAsState(targetValue = if (isPermitted) 0f else 1f)
+        val mainAlpha by animateFloatAsState(targetValue = if (isPermitted && loadingAlpha == 0f) 1f else 0f)
 
-        firebaseViewmodel.connectionLivedata.observe(this) {
-            isConnected = it == Connection.Success
+        uiViewmodel.permittedLivedata.observe(this) {
+            if (it) isPermitted = true
         }
 
         GoodWineTheme {
@@ -196,10 +171,68 @@ class MainActivity : ComponentActivity() {
                     },
                 color = MaterialTheme.colorScheme.background
             ) {
-                if (isConnected && loadingAlpha == 0f) Main(Modifier.alpha(mainAlpha))
-                else Loading(Modifier.alpha(loadingAlpha))
+                if (isPermitted && loadingAlpha == 0f) {
+                    Main(Modifier.alpha(mainAlpha))
+                    if (prefs.getBoolean(FIRST_USE_TAG, true))
+                        Tutorial()
+                } else Loading(Modifier.alpha(loadingAlpha))
             }
         }
+    }
+
+    @Composable
+    fun Tutorial(modifier: Modifier = Modifier) {
+
+        var asChanged by remember {
+            mutableStateOf(".")
+        }
+
+        var tutorialItem by remember {
+            mutableStateOf(TutorialItem(Offset.Zero, IntSize.Zero))
+        }
+        val tutorialItemOffset by animateOffsetAsState(
+            targetValue = tutorialItem.offset
+        )
+        val tutorialItemSize by animateSizeAsState(
+            targetValue = Size(
+                tutorialItem.size.width.toFloat(),
+                tutorialItem.size.height.toFloat()
+            )
+        )
+
+        uiViewmodel.descriptionItemLivedata.observe(this) {
+            tutorialItem = it.copy(
+                offset = it.offset.plus(Offset(-10f, 10f)),
+                size = IntSize(
+                    it.size.width + 20,
+                    it.size.height
+                )
+            )
+        }
+
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .layoutId(asChanged)
+                .clickable(true) { }
+                .graphicsLayer(alpha = 0.5f),
+            onDraw = {
+                println("REDRAW")
+                drawRect(
+                    color = Color.Black,
+                    size = size,
+                    alpha = 1f,
+                    blendMode = BlendMode.Xor
+                )
+                drawRoundRect(
+                    color = Color.Black,
+                    topLeft = tutorialItemOffset,
+                    size = tutorialItemSize,
+                    cornerRadius = CornerRadius(10f, 10f),
+                    alpha = 1f,
+                    blendMode = BlendMode.Xor
+                )
+            })
     }
 
     @Composable
@@ -213,6 +246,8 @@ class MainActivity : ComponentActivity() {
         uiViewmodel.addBottleLivedata.observe(this) {
             isAddBottle = it
         }
+
+        firebaseViewmodel.syncBottles()
 
         ConstraintLayout(
             ConstraintSet {
@@ -323,7 +358,8 @@ class MainActivity : ComponentActivity() {
                                             )
                                             .padding(8.dp)
                                             .fillMaxWidth()
-                                            .fillMaxHeight(.8f)
+                                            .fillMaxHeight(.8f),
+                                        style = TextStyle(color = MaterialTheme.colorScheme.onPrimary)
                                     )
                                     RatingBar(
                                         value = bottle.rating,
@@ -442,10 +478,19 @@ class MainActivity : ComponentActivity() {
                             .fillMaxHeight(.8f)
                             .onFocusEvent {
                                 if (it.isFocused) uiViewmodel.setKeyboard(true)
+                            }
+                            .onGloballyPositioned {
+                                uiViewmodel.setDescriptionItem(
+                                    TutorialItem(
+                                        it.positionInRoot(),
+                                        it.size
+                                    )
+                                )
                             },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(
-                            onDone = { hideKeyboard() })
+                            onDone = { hideKeyboard() }),
+                        colors = TextFieldDefaults.textFieldColors(textColor = MaterialTheme.colorScheme.onPrimary)
                     )
                     Row(
                         modifier = Modifier

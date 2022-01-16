@@ -2,6 +2,7 @@ package com.elfefe.goodwine.utils
 
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.SharedPreferences
 import android.graphics.*
 import android.hardware.input.InputManager
 import android.media.Image
@@ -14,11 +15,16 @@ import java.io.FileOutputStream
 import java.util.*
 
 
+val app = BaseApplication.instance
 
 fun resString(id: Int) = BaseApplication.instance.getString(id)
 
 val timestamp: Long
     get() = Date().time
+
+val prefs = app.getSharedPreferences("Default", Context.MODE_PRIVATE)
+
+const val FIRST_USE_TAG = "First use tag"
 
 fun Image.toBitmap(): Bitmap {
     val yBuffer = planes[0].buffer // Y

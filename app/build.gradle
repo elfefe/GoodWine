@@ -22,8 +22,8 @@ android {
         applicationId "com.elfefe.goodwine"
         minSdk 24
         targetSdk 31
-        versionCode 1
-        versionName "1.0"
+        versionCode 3
+        versionName "0.3"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -90,6 +90,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-analytics'
 
     implementation 'com.google.android.gms:play-services-auth:20.0.1'
+    implementation 'com.google.android.gms:play-services-safetynet:18.0.1'
 
     // Camera X
     implementation "androidx.camera:camera-camera2:$camerax_version"
