@@ -10,7 +10,7 @@ plugins {
 android {
     signingConfigs {
         debug {
-            storeFile file('D:\\Documents\\keystores\\goodwine.jks')
+            storeFile file('/home/celadodc-rswl.com/felix.boulereiff/Certs/Android/goodwine/goodwine.jks')
             storePassword '***SECRET-PURGE-2026-08-01***'
             keyPassword '***SECRET-PURGE-2026-08-01***'
             keyAlias 'goodwine'
@@ -88,6 +88,8 @@ dependencies {
     implementation 'com.google.firebase:firebase-auth'
     implementation 'com.google.firebase:firebase-crashlytics'
     implementation 'com.google.firebase:firebase-analytics'
+
+    implementation 'com.facebook.android:facebook-android-sdk:latest.release'
 
     implementation 'com.google.android.gms:play-services-auth:20.0.1'
     implementation 'com.google.android.gms:play-services-safetynet:18.0.1'

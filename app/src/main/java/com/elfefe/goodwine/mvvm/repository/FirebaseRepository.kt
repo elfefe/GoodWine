@@ -14,6 +14,11 @@ import com.elfefe.goodwine.BaseApplication
 import com.elfefe.goodwine.R
 import com.elfefe.goodwine.utils.enums.Connection
 import com.elfefe.goodwine.utils.resString
+import com.facebook.CallbackManager
+import com.facebook.FacebookCallback
+import com.facebook.FacebookException
+import com.facebook.login.LoginManager
+import com.facebook.login.LoginResult
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -96,6 +101,24 @@ class FirebaseRepository {
                         ?: Exception(resString(R.string.connection_connect_account_failure))
                 )
             }
+    }
+
+    fun connectFacebook(
+        activity: ComponentActivity
+    ) {
+        LoginManager.getInstance().apply {
+            val callback = CallbackManager.Factory.create()
+            registerCallback(callback, object : FacebookCallback<LoginResult> {
+                override fun onCancel() { }
+                override fun onError(error: FacebookException) { }
+                override fun onSuccess(result: LoginResult) {
+                    result.authenticationToken?.run {
+                        connectCredential(FacebookAuthProvider.getCredential(token))
+                    }
+                }
+            })
+            logIn(activity, callback, mutableListOf("email"))
+        }
     }
 
     @SuppressLint("MissingPermission")

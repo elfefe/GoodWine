@@ -4,6 +4,9 @@ import android.app.Application
 import com.elfefe.goodwine.mvvm.repository.CameraRepository
 import com.elfefe.goodwine.mvvm.repository.FirebaseRepository
 import com.elfefe.goodwine.mvvm.repository.OltpRepository
+import com.elfefe.goodwine.utils.resString
+import com.facebook.FacebookSdk
+import com.facebook.appevents.AppEventsLogger
 
 class BaseApplication: Application() {
     lateinit var cameraRepository: CameraRepository
@@ -13,9 +16,14 @@ class BaseApplication: Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+
         cameraRepository = CameraRepository()
         oltpRepository = OltpRepository()
         firebaseRepository = FirebaseRepository()
+
+        FacebookSdk.setApplicationId(resString(R.string.facebook_app_id))
+        FacebookSdk.sdkInitialize(this)
+        AppEventsLogger.activateApp(this)
     }
 
     companion object {

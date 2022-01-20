@@ -2,6 +2,7 @@ package com.elfefe.goodwine.ui
 
 import android.Manifest.permission.CAMERA
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -67,6 +68,12 @@ import com.elfefe.goodwine.mvvm.viewmodel.UiViewmodel
 import com.elfefe.goodwine.oltp.parcelable.Bottle
 import com.elfefe.goodwine.ui.theme.GoodWineTheme
 import com.elfefe.goodwine.utils.*
+import com.facebook.CallbackManager
+import com.facebook.FacebookCallback
+import com.facebook.FacebookException
+import com.facebook.login.LoginManager
+import com.facebook.login.LoginResult
+import com.facebook.login.widget.LoginButton
 import com.gowtham.ratingbar.RatingBar
 import com.gowtham.ratingbar.StepSize
 
@@ -173,7 +180,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 if (isPermitted && loadingAlpha == 0f) {
                     Main(Modifier.alpha(mainAlpha))
-                    if (prefs.getBoolean(FIRST_USE_TAG, true))
+                    if (prefs.getBoolean(FIRST_USE_TAG, false))
                         Tutorial()
                 } else Loading(Modifier.alpha(loadingAlpha))
             }
