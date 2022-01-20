@@ -13,8 +13,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.*
+import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
 import androidx.compose.foundation.*
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,8 +28,7 @@ import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,11 +43,12 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.*
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.SoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
@@ -59,6 +59,7 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.ConstraintSet
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
+import com.elfefe.goodwine.R
 import com.elfefe.goodwine.databinding.CameraViewBinding
 import com.elfefe.goodwine.mvvm.viewmodel.CameraViewmodel
 import com.elfefe.goodwine.mvvm.viewmodel.FirebaseViewmodel
@@ -173,7 +174,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 if (isPermitted && loadingAlpha == 0f) {
                     Main(Modifier.alpha(mainAlpha))
-                    if (prefs.getBoolean(FIRST_USE_TAG, true))
+                    if (prefs.getBoolean(FIRST_USE_TAG, false))
                         Tutorial()
                 } else Loading(Modifier.alpha(loadingAlpha))
             }
@@ -253,12 +254,21 @@ class MainActivity : ComponentActivity() {
             ConstraintSet {
                 val front = createRefFor("front")
                 val bottle = createRefFor("bottle")
+                val options = createRefFor("options")
                 val fab = createRefFor("floating button")
 
                 constrain(front) {
                     top.linkTo(parent.top)
                     bottom.linkTo(bottle.top)
                     height = Dimension.fillToConstraints
+                }
+                constrain(options) {
+                    bottom.linkTo(fab.bottom)
+                    top.linkTo(fab.top)
+                    start.linkTo(parent.start)
+                    end.linkTo(fab.start)
+                    height = Dimension.fillToConstraints
+                    width = Dimension.fillToConstraints
                 }
                 constrain(fab) {
                     bottom.linkTo(bottle.top, 8.dp)
@@ -276,6 +286,11 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier
                     .layoutId("front")
                     .fillMaxWidth()
+            )
+            Options(
+                modifier = Modifier
+                    .layoutId("options")
+                    .padding(8.dp)
             )
             FloatingButton(
                 modifier = Modifier
@@ -374,6 +389,128 @@ class MainActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 })
+        }
+    }
+
+    @OptIn(ExperimentalAnimationGraphicsApi::class)
+    @Composable
+    fun Options(modifier: Modifier = Modifier) {
+        val initCategory = painterResource(id = R.drawable.baseline_view_agenda_black_48)
+        var category: Painter by remember {
+            mutableStateOf(initCategory)
+        }
+        val initFilter = painterResource(id = R.drawable.baseline_menu_black_48)
+        var filter: Painter by remember {
+            mutableStateOf(initFilter)
+        }
+        val initRating = painterResource(id = R.drawable.baseline_star_rate_black_48)
+        var rating: Painter by remember {
+            mutableStateOf(initRating)
+        }
+        val initRatingArrow = painterResource(id = R.drawable.baseline_arrow_right_alt_black_48)
+        var ratingArrow: Painter by remember {
+            mutableStateOf(initRatingArrow)
+        }
+
+        var isAddBottle by remember { mutableStateOf(false) }
+        val iconSize by animateDpAsState(targetValue = if (isAddBottle) 24.dp else 36.dp)
+
+        var isRatingArrowVisible by remember { mutableStateOf(true) }
+        val ratingArrowApha by animateFloatAsState(targetValue = if (isRatingArrowVisible) 1f else 0f)
+
+        var isRatingArrowAsc by remember { mutableStateOf(false) }
+        val ratingArrowRotation by animateFloatAsState(targetValue = if (isRatingArrowVisible) 90f else -90f)
+
+        uiViewmodel.addBottleLivedata.observe(this) {
+            isAddBottle = it
+        }
+
+        Card(
+            modifier = modifier,
+            shape = RoundedCornerShape(16.dp, 16.dp, 0.dp, 0.dp),
+            elevation = 3.dp,
+            border = BorderStroke(0.dp, Color.Transparent),
+            backgroundColor = MaterialTheme.colorScheme.background
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(.4f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    IconButton(modifier = Modifier.size(iconSize), onClick = {
+
+                    }) {
+                        Icon(
+                            painter = category,
+                            contentDescription = "category",
+                            modifier = Modifier.fillMaxSize(),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(modifier = Modifier.size(iconSize), onClick = {
+
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            modifier = Modifier.fillMaxSize(),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(.7f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    IconButton(modifier = Modifier.size(iconSize), onClick = {
+
+                    }) {
+                        Icon(
+                            painter = filter,
+                            contentDescription = "filter",
+                            modifier = Modifier.fillMaxSize(),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Button(modifier = Modifier.size(iconSize), onClick = {
+                        if (isRatingArrowVisible) {
+                            if (!isRatingArrowAsc)
+                                isRatingArrowVisible = false
+                            isRatingArrowAsc = !isRatingArrowAsc
+                        } else isRatingArrowVisible = true
+                    }) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                painter = rating,
+                                contentDescription = "rating",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Icon(
+                                painter = ratingArrow,
+                                contentDescription = "rating arrow",
+                                modifier = Modifier
+                                    .rotate(ratingArrowRotation)
+                                    .alpha(ratingArrowApha),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -490,7 +627,10 @@ class MainActivity : ComponentActivity() {
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(
                             onDone = { hideKeyboard() }),
-                        colors = TextFieldDefaults.textFieldColors(textColor = MaterialTheme.colorScheme.onPrimary)
+                        colors = TextFieldDefaults.textFieldColors(
+                            textColor = MaterialTheme.colorScheme.onPrimary,
+                            backgroundColor = Color.Transparent
+                        )
                     )
                     Row(
                         modifier = Modifier
