@@ -1,6 +1,7 @@
 package com.elfefe.goodwine.ui
 
 import android.Manifest.permission.CAMERA
+import android.Manifest.permission.INTERNET
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -13,9 +14,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -35,8 +38,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.onFocusEvent
@@ -45,6 +50,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.input.pointer.motionEventSpy
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.*
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -52,7 +59,9 @@ import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidViewBinding
@@ -75,8 +84,10 @@ import com.facebook.FacebookException
 import com.facebook.login.LoginManager
 import com.facebook.login.LoginResult
 import com.facebook.login.widget.LoginButton
+import com.facebook.share.widget.LikeView
 import com.gowtham.ratingbar.RatingBar
 import com.gowtham.ratingbar.StepSize
+import kotlin.math.absoluteValue
 
 
 class MainActivity : ComponentActivity() {
@@ -115,9 +126,14 @@ class MainActivity : ComponentActivity() {
             println("CONNECTION $it ${firebaseViewmodel.user?.run { ".$displayName .$tenantId .$providerId .$uid" }}")
         }
 
-        askPermission(arrayOf(CAMERA))
+        askPermission(arrayOf(CAMERA, INTERNET))
 
         uiViewmodel.setBottle(true)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        firebaseViewmodel.onResult(requestCode, resultCode, data)
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     private fun askPermission(permissions: Array<String>) {
@@ -274,7 +290,7 @@ class MainActivity : ComponentActivity() {
                     top.linkTo(fab.top)
                     start.linkTo(parent.start)
                     end.linkTo(fab.start)
-                    height = Dimension.fillToConstraints
+                    height = Dimension.wrapContent
                     width = Dimension.fillToConstraints
                 }
                 constrain(fab) {
@@ -399,7 +415,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @OptIn(ExperimentalAnimationGraphicsApi::class)
+    @OptIn(ExperimentalAnimationGraphicsApi::class, ExperimentalComposeUiApi::class)
     @Composable
     fun Options(modifier: Modifier = Modifier) {
         val initCategory = painterResource(id = R.drawable.baseline_view_agenda_black_48)
@@ -418,6 +434,13 @@ class MainActivity : ComponentActivity() {
         var ratingArrow: Painter by remember {
             mutableStateOf(initRatingArrow)
         }
+        val initOptionsArrow = painterResource(id = R.drawable.outline_chevron_left_black_36)
+        var optionsArrow: Painter by remember {
+            mutableStateOf(initOptionsArrow)
+        }
+
+        var isOptions by remember { mutableStateOf(false) }
+        val optionsArrowRotation by animateFloatAsState(targetValue = if (isOptions) 180f else 0f)
 
         var isAddBottle by remember { mutableStateOf(false) }
         val iconSize by animateDpAsState(targetValue = if (isAddBottle) 24.dp else 36.dp)
@@ -426,25 +449,74 @@ class MainActivity : ComponentActivity() {
         val ratingArrowApha by animateFloatAsState(targetValue = if (isRatingArrowVisible) 1f else 0f)
 
         var isRatingArrowAsc by remember { mutableStateOf(false) }
-        val ratingArrowRotation by animateFloatAsState(targetValue = if (isRatingArrowVisible) 90f else -90f)
+        val ratingArrowRotation by animateFloatAsState(targetValue = if (isRatingArrowAsc) 90f else -90f)
+
+        var optionsOffsetSize by remember { mutableStateOf(0) }
+        val optionsOffset by animateIntAsState(targetValue = if (isOptions) 0 else optionsOffsetSize)
+
+        val optionsColor by animateColorAsState(targetValue = if (isOptions) MaterialTheme.colorScheme.background else Color.Transparent)
 
         uiViewmodel.addBottleLivedata.observe(this) {
             isAddBottle = it
         }
 
-        Card(
-            modifier = modifier,
-            shape = RoundedCornerShape(16.dp, 16.dp, 0.dp, 0.dp),
-            elevation = 3.dp,
-            border = BorderStroke(0.dp, Color.Transparent),
-            backgroundColor = MaterialTheme.colorScheme.background
+        firebaseViewmodel.connectionLivedata.observe(this@MainActivity) {
+            println("USER ${firebaseViewmodel.user?.uid} ${firebaseViewmodel.user?.displayName}")
+        }
+
+        Row(
+            modifier = modifier.composed {
+                Modifier
+                    .clipToBounds()
+                    .onSizeChanged {
+                        optionsOffsetSize = it.width - if (isAddBottle) 70 else 90
+                    }
+                    .pointerInput(Unit) {
+                        detectDragGestures { _, dragAmount ->
+                            if (dragAmount.x > 7) isOptions = false
+                            else if (dragAmount.x < -7) isOptions = true
+                        }
+                    }
+            },
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
                 modifier = Modifier
-                    .fillMaxWidth(),
+                    .background(
+                        optionsColor,
+                        RoundedCornerShape(10.dp)
+                    )
+                    .fillMaxWidth()
+                    .offset { IntOffset(optionsOffset, 0) }
+                    .padding(5.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
+                IconButton(modifier = Modifier.size(iconSize), onClick = {
+                    isOptions = !isOptions
+                }) {
+                    Icon(
+                        painter = optionsArrow,
+                        contentDescription = "options",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .rotate(optionsArrowRotation),
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                }
+
+                IconButton(modifier = Modifier.size(iconSize), onClick = {
+                    firebaseViewmodel.connectFacebook(this@MainActivity)
+                }) {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = "options",
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth(.4f),
@@ -458,7 +530,7 @@ class MainActivity : ComponentActivity() {
                             painter = category,
                             contentDescription = "category",
                             modifier = Modifier.fillMaxSize(),
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.secondary
                         )
                     }
                     IconButton(modifier = Modifier.size(iconSize), onClick = {
@@ -468,7 +540,7 @@ class MainActivity : ComponentActivity() {
                             imageVector = Icons.Default.Search,
                             contentDescription = "Search",
                             modifier = Modifier.fillMaxSize(),
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.secondary
                         )
                     }
                 }
@@ -485,36 +557,8 @@ class MainActivity : ComponentActivity() {
                             painter = filter,
                             contentDescription = "filter",
                             modifier = Modifier.fillMaxSize(),
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.secondary
                         )
-                    }
-                    Button(modifier = Modifier.size(iconSize), onClick = {
-                        if (isRatingArrowVisible) {
-                            if (!isRatingArrowAsc)
-                                isRatingArrowVisible = false
-                            isRatingArrowAsc = !isRatingArrowAsc
-                        } else isRatingArrowVisible = true
-                    }) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                painter = rating,
-                                contentDescription = "rating",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Icon(
-                                painter = ratingArrow,
-                                contentDescription = "rating arrow",
-                                modifier = Modifier
-                                    .rotate(ratingArrowRotation)
-                                    .alpha(ratingArrowApha),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
                     }
                 }
             }

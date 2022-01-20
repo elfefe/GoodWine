@@ -1,6 +1,7 @@
 package com.elfefe.goodwine.mvvm.viewmodel
 
 import android.app.Activity
+import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -40,6 +41,13 @@ class FirebaseViewmodel: ViewModel() {
     fun connectAnonymoulsy() = repository.connectAnonymous()
 
     fun connectFacebook(activity: ComponentActivity) = repository.connectFacebook(activity)
+
+    fun onResult(
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?) {
+        repository.onFacebookResult(requestCode, resultCode, data)
+    }
 
     fun connectPhone(
         activity: Activity,

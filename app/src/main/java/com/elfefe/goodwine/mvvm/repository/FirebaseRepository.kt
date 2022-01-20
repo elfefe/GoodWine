@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.telephony.TelephonyManager
 import androidx.activity.ComponentActivity
@@ -19,6 +20,7 @@ import com.facebook.FacebookCallback
 import com.facebook.FacebookException
 import com.facebook.login.LoginManager
 import com.facebook.login.LoginResult
+import com.google.android.gms.auth.api.credentials.Credential
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -54,6 +56,8 @@ class FirebaseRepository {
     private val _connectionFlow = MutableStateFlow<Connection?>(null)
     val connectionFlow: StateFlow<Connection?>
         get() = _connectionFlow
+
+    private lateinit var facebookCallback: CallbackManager
 
     fun createAccount(email: String, password: String) {
         auth.createUserWithEmailAndPassword(email, password)
@@ -91,35 +95,27 @@ class FirebaseRepository {
             }
     }
 
-    fun connectCredential(credential: AuthCredential) {
-        auth.signInWithCredential(credential)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    _connectionFlow.value = Connection.Success
-                } else _connectionFlow.value = Connection.Failure(
-                    task.exception
-                        ?: Exception(resString(R.string.connection_connect_account_failure))
-                )
-            }
-    }
-
     fun connectFacebook(
         activity: ComponentActivity
     ) {
         LoginManager.getInstance().apply {
-            val callback = CallbackManager.Factory.create()
-            registerCallback(callback, object : FacebookCallback<LoginResult> {
+            facebookCallback = CallbackManager.Factory.create()
+            registerCallback(facebookCallback, object : FacebookCallback<LoginResult> {
                 override fun onCancel() { }
                 override fun onError(error: FacebookException) { }
                 override fun onSuccess(result: LoginResult) {
+                    println("SUCCCESSSSS ${result.authenticationToken} ${result.accessToken}")
                     result.authenticationToken?.run {
-                        connectCredential(FacebookAuthProvider.getCredential(token))
+                        linkUser(FacebookAuthProvider.getCredential(token))
                     }
                 }
             })
-            logIn(activity, callback, mutableListOf("email"))
+            logIn(activity, facebookCallback, mutableListOf("email"))
         }
     }
+
+    fun onFacebookResult(requestCode: Int, resultCode: Int, data: Intent?) =
+        facebookCallback.onActivityResult(requestCode, resultCode, data)
 
     @SuppressLint("MissingPermission")
     fun connectPhone(
@@ -143,6 +139,30 @@ class FirebaseRepository {
                 })
                 .build()
         )
+    }
+
+    private fun linkUser(credential: AuthCredential) {
+        user
+            ?.linkWithCredential(credential)
+            ?.addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    _connectionFlow.value = Connection.Success
+                } else {
+                    connectCredential(credential)
+                }
+            } ?: connectCredential(credential)
+    }
+
+    private fun connectCredential(credential: AuthCredential) {
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    _connectionFlow.value = Connection.Success
+                } else _connectionFlow.value = Connection.Failure(
+                    task.exception
+                        ?: Exception(resString(R.string.connection_connect_account_failure))
+                )
+            }
     }
 
     fun syncData(bottleIds: List<Long>) {
