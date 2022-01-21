@@ -125,9 +125,6 @@ class MainActivity : ComponentActivity() {
         }
 
         firebaseViewmodel.connect()
-        firebaseViewmodel.connectionLivedata.observe(this) {
-            println("CONNECTION $it ${firebaseViewmodel.user?.run { ".$displayName .$tenantId .$providerId .$uid" }}")
-        }
 
         askPermission(arrayOf(CAMERA, INTERNET))
 
@@ -464,7 +461,7 @@ class MainActivity : ComponentActivity() {
         }
 
         firebaseViewmodel.connectionLivedata.observe(this@MainActivity) {
-            println("USER ${firebaseViewmodel.user?.uid} ${firebaseViewmodel.user?.displayName}")
+            println("USER ${firebaseViewmodel.user?.uid} ${firebaseViewmodel.user?.run { "$uid $displayName $uid $tenantId $email" }}")
         }
 
         Row(

@@ -35,7 +35,7 @@ class FirebaseViewmodel: ViewModel() {
     }
 
     fun connect() {
-        if (repository.user?.isEmailVerified != true) repository.connectAnonymous()
+        if (repository.user?.isEmailVerified != true) repository.checkConnection()
     }
 
     fun connectAnonymoulsy() = repository.connectAnonymous()

@@ -15,6 +15,7 @@ import com.elfefe.goodwine.BaseApplication
 import com.elfefe.goodwine.R
 import com.elfefe.goodwine.utils.enums.Connection
 import com.elfefe.goodwine.utils.resString
+import com.facebook.AccessToken
 import com.facebook.CallbackManager
 import com.facebook.FacebookCallback
 import com.facebook.FacebookException
@@ -32,6 +33,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 
@@ -58,6 +60,13 @@ class FirebaseRepository {
         get() = _connectionFlow
 
     private lateinit var facebookCallback: CallbackManager
+
+    fun checkConnection() {
+        if (AccessToken.isCurrentAccessTokenActive())
+            AccessToken.getCurrentAccessToken()?.run {
+                connectCredential(FacebookAuthProvider.getCredential(token))
+            }
+    }
 
     fun createAccount(email: String, password: String) {
         auth.createUserWithEmailAndPassword(email, password)
@@ -98,20 +107,24 @@ class FirebaseRepository {
     fun connectFacebook(
         activity: ComponentActivity
     ) {
-        LoginManager.getInstance().apply {
-            facebookCallback = CallbackManager.Factory.create()
-            registerCallback(facebookCallback, object : FacebookCallback<LoginResult> {
-                override fun onCancel() { }
-                override fun onError(error: FacebookException) { }
-                override fun onSuccess(result: LoginResult) {
-                    println("SUCCCESSSSS ${result.authenticationToken} ${result.accessToken}")
-                    result.authenticationToken?.run {
-                        linkUser(FacebookAuthProvider.getCredential(token))
+        if (AccessToken.isCurrentAccessTokenActive())
+            AccessToken.getCurrentAccessToken()?.run {
+                linkUser(FacebookAuthProvider.getCredential(token))
+            }
+        else
+            LoginManager.getInstance().apply {
+                facebookCallback = CallbackManager.Factory.create()
+                registerCallback(facebookCallback, object : FacebookCallback<LoginResult> {
+                    override fun onCancel() {}
+                    override fun onError(error: FacebookException) {}
+                    override fun onSuccess(result: LoginResult) {
+                        result.authenticationToken?.run {
+                            linkUser(FacebookAuthProvider.getCredential(token))
+                        }
                     }
-                }
-            })
-            logIn(activity, facebookCallback, mutableListOf("email"))
-        }
+                })
+                logIn(activity, facebookCallback, mutableListOf("email", "public_profile"))
+            }
     }
 
     fun onFacebookResult(requestCode: Int, resultCode: Int, data: Intent?) =
@@ -123,16 +136,23 @@ class FirebaseRepository {
         onSuccess: () -> Unit,
         onFailure: (Exception?) -> Unit
     ) {
-        val telephonyManager = activity.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        val telephonyManager =
+            activity.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         PhoneAuthProvider.verifyPhoneNumber(
             PhoneAuthOptions
                 .newBuilder(auth)
                 .setPhoneNumber(telephonyManager.line1Number)       // Phone number to verify
                 .setTimeout(60L, TimeUnit.SECONDS) // Timeout and unit
                 .setActivity(activity)                 // Activity (for callback binding)
-                .setCallbacks(object: PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
-                    override fun onVerificationCompleted(p0: PhoneAuthCredential) { onSuccess() }
-                    override fun onVerificationFailed(p0: FirebaseException) { onFailure(p0) }
+                .setCallbacks(object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+                    override fun onVerificationCompleted(p0: PhoneAuthCredential) {
+                        onSuccess()
+                    }
+
+                    override fun onVerificationFailed(p0: FirebaseException) {
+                        onFailure(p0)
+                    }
+
                     override fun onCodeSent(p0: String, p1: PhoneAuthProvider.ForceResendingToken) {
                         super.onCodeSent(p0, p1)
                     }
@@ -157,6 +177,13 @@ class FirebaseRepository {
         auth.signInWithCredential(credential)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
+                        store
+                            .collection("Database")
+                            .document(user?.email ?: "")
+                            .get()
+                            .addOnCompleteListener {
+                                println("TASK ${user?.email} ${it.result.get("Bottle")}")
+                            }
                     _connectionFlow.value = Connection.Success
                 } else _connectionFlow.value = Connection.Failure(
                     task.exception
