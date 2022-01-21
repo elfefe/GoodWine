@@ -9,6 +9,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -617,6 +620,8 @@ class MainActivity : ComponentActivity() {
             targetValue = if (asPicture && asDescription && asRating) 1f else 0f
         )
 
+        var isMicOn by remember { mutableStateOf(false) }
+
         if (isHidden) {
             rating = 0f
             description = ""
@@ -630,6 +635,22 @@ class MainActivity : ComponentActivity() {
             image = it
             asPicture = true
         }
+
+        val speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
+        speechRecognizer.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) {}
+            override fun onBeginningOfSpeech() {}
+            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onBufferReceived(buffer: ByteArray?) {
+                println("SPEECH ${buffer.contentToString()}")
+            }
+
+            override fun onEndOfSpeech() {}
+            override fun onError(error: Int) {}
+            override fun onResults(results: Bundle?) {}
+            override fun onPartialResults(partialResults: Bundle?) {}
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+        })
 
         Card(
             modifier = modifier,
@@ -659,7 +680,27 @@ class MainActivity : ComponentActivity() {
                             asDescription = true
                         },
                         placeholder = { BasicText(text = "Enter a description") },
-                        label = { BasicText(text = "Description") },
+                        label = {
+                            Row(
+                                modifier = Modifier
+                            ) {
+                                BasicText(text = "Description")
+                                Spacer(modifier = Modifier.width(16.dp))
+                                IconButton(onClick = {
+                                    if (!isMicOn) speechRecognizer.startListening(
+                                        RecognizerIntent
+                                            .getVoiceDetailsIntent(this@MainActivity)
+                                    )
+                                    else speechRecognizer.stopListening()
+                                    isMicOn = !isMicOn
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Phone,
+                                        contentDescription = "Mic"
+                                    )
+                                }
+                            }
+                        },
                         modifier = Modifier
                             .padding(8.dp)
                             .fillMaxWidth()

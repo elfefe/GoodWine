@@ -16,6 +16,12 @@
         <provider android:authorities="com.facebook.katana.provider.PlatformProvider"
         android:exported="true" />
     </queries>
+    <queries>
+        <intent>
+            <action
+                android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
 
     <application
         android:name=".BaseApplication"
