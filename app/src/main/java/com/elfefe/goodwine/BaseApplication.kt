@@ -3,6 +3,7 @@ package com.elfefe.goodwine
 import android.app.Application
 import com.elfefe.goodwine.mvvm.repository.CameraRepository
 import com.elfefe.goodwine.mvvm.repository.FirebaseRepository
+import com.elfefe.goodwine.mvvm.Mediator
 import com.elfefe.goodwine.mvvm.repository.OltpRepository
 import com.elfefe.goodwine.utils.resString
 import com.facebook.FacebookSdk
@@ -12,14 +13,13 @@ class BaseApplication: Application() {
     lateinit var cameraRepository: CameraRepository
     lateinit var oltpRepository: OltpRepository
     lateinit var firebaseRepository: FirebaseRepository
+    lateinit var mediator: Mediator
 
     override fun onCreate() {
         super.onCreate()
         instance = this
 
-        cameraRepository = CameraRepository()
-        oltpRepository = OltpRepository()
-        firebaseRepository = FirebaseRepository()
+        mediator = Mediator()
 
         FacebookSdk.setApplicationId(resString(R.string.facebook_app_id))
         FacebookSdk.sdkInitialize(this)

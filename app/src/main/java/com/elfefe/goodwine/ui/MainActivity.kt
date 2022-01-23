@@ -17,6 +17,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
@@ -608,6 +609,8 @@ class MainActivity : ComponentActivity() {
             mutableStateOf("")
         }
 
+        var isFocused: Boolean by remember { mutableStateOf(false) }
+
         var rating: Float by remember { mutableStateOf(0f) }
 
         var asPicture by remember { mutableStateOf(false) }
@@ -679,22 +682,25 @@ class MainActivity : ComponentActivity() {
                         placeholder = { BasicText(text = "Enter a description") },
                         label = {
                             Row(
-                                modifier = Modifier
+                                modifier = Modifier,
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 BasicText(text = "Description")
-                                Spacer(modifier = Modifier.width(16.dp))
-                                IconButton(onClick = {
-                                    if (!isMicOn) speechRecognizer.startListening(
-                                        RecognizerIntent
-                                            .getVoiceDetailsIntent(this@MainActivity)
-                                    )
-                                    else speechRecognizer.stopListening()
-                                    isMicOn = !isMicOn
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Phone,
-                                        contentDescription = "Mic"
-                                    )
+                                AnimatedVisibility(visible = isFocused) {
+                                    IconButton(onClick = {
+                                        if (!isMicOn) speechRecognizer.startListening(
+                                            RecognizerIntent
+                                                .getVoiceDetailsIntent(this@MainActivity)
+                                        )
+                                        else speechRecognizer.stopListening()
+                                        isMicOn = !isMicOn
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Phone,
+                                            contentDescription = "Mic"
+                                        )
+                                    }
                                 }
                             }
                         },
@@ -703,7 +709,10 @@ class MainActivity : ComponentActivity() {
                             .fillMaxWidth()
                             .fillMaxHeight(.8f)
                             .onFocusEvent {
-                                if (it.isFocused) uiViewmodel.setKeyboard(true)
+                                if (it.isFocused) {
+                                    uiViewmodel.setKeyboard(true)
+                                }
+                                isFocused = it.isFocused
                             }
                             .onGloballyPositioned {
                                 uiViewmodel.setDescriptionItem(

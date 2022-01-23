@@ -13,6 +13,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat.getSystemService
 import com.elfefe.goodwine.BaseApplication
 import com.elfefe.goodwine.R
+import com.elfefe.goodwine.oltp.parcelable.Bottle
 import com.elfefe.goodwine.utils.enums.Connection
 import com.elfefe.goodwine.utils.resString
 import com.facebook.AccessToken
@@ -28,6 +29,8 @@ import com.google.android.gms.common.api.ApiException
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseException
 import com.google.firebase.auth.*
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,11 +58,21 @@ class FirebaseRepository {
 
     val googleIntent = GoogleSignIn.getClient(BaseApplication.instance, gso).signInIntent
 
+    private lateinit var facebookCallback: CallbackManager
+
     private val _connectionFlow = MutableStateFlow<Connection?>(null)
     val connectionFlow: StateFlow<Connection?>
         get() = _connectionFlow
 
-    private lateinit var facebookCallback: CallbackManager
+    private val _bottleFlow = MutableStateFlow<List<Bottle>?>(null)
+    val bottleFlow: StateFlow<List<Bottle>?>
+        get() = _bottleFlow
+
+    private val bottleCollection: CollectionReference
+        get() = store
+            .collection("Database")
+            .document(user?.email ?: "")
+            .collection("Bottle")
 
     fun checkConnection() {
         if (AccessToken.isCurrentAccessTokenActive())
@@ -177,13 +190,6 @@ class FirebaseRepository {
         auth.signInWithCredential(credential)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                        store
-                            .collection("Database")
-                            .document(user?.email ?: "")
-                            .get()
-                            .addOnCompleteListener {
-                                println("TASK ${user?.email} ${it.result.get("Bottle")}")
-                            }
                     _connectionFlow.value = Connection.Success
                 } else _connectionFlow.value = Connection.Failure(
                     task.exception
@@ -192,29 +198,55 @@ class FirebaseRepository {
             }
     }
 
-    fun syncData(bottleIds: List<Long>) {
+    fun syncData(bottleIds: List<Int>) {
         store
-            .collection("Bottles")
-            .addSnapshotListener { value, error ->
-                println("BOTTLE ${value?.documents?.map { it.id }?.toList()}")
-                error?.printStackTrace()
+            .collection("Database")
+            .document(user?.email ?: "")
+            .collection("Bottle")
+            .whereNotIn(FieldPath.documentId(), bottleIds.map { it.toString() })
+            .get()
+            .addOnSuccessListener { snapshot ->
+                _bottleFlow.value =
+                    snapshot.documents.map {
+                        Bottle(
+                            it.id.toInt(),
+                            it.get("Date") as Long,
+                            it.get("Picture").toString(),
+                            it.get("Description").toString(),
+                            (it.get("Rating") as Double).toFloat(),
+                        )
+                    }.toList()
             }
     }
 
+    fun sendBottles(bottles: List<Bottle>) {
+        bottles.forEach { bottle ->
+            bottleCollection
+                .document(bottle.id.toString())
+                .set(
+                    mapOf(
+                        "Date" to bottle.date,
+                        "Picture" to bottle.picture,
+                        "Description" to bottle.description,
+                        "Rating" to bottle.rating
+                    )
+                )
+        }
+    }
+
     companion object {
-        fun connectGoogle(
+        fun FirebaseRepository.connectGoogle(
             activity: ComponentActivity,
             onSuccess: (FirebaseUser) -> Unit = { },
             onFailure: (Exception?) -> Unit = { }
         ): () -> Unit {
-            val firebase = BaseApplication.instance.firebaseRepository
             val register = activity
                 .registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
                     if (it.resultCode == 0) {
                         val task = GoogleSignIn.getSignedInAccountFromIntent(it.data)
                         try {
                             val account = task.getResult(ApiException::class.java)
-                            firebase.auth.signInWithCredential(
+                            auth.signInWithCredential(
                                 GoogleAuthProvider.getCredential(
                                     account.idToken,
                                     null
@@ -229,7 +261,7 @@ class FirebaseRepository {
                         }
                     }
                 }
-            return { firebase.user ?: register.launch(firebase.googleIntent) }
+            return { user ?: register.launch(googleIntent) }
         }
     }
 }

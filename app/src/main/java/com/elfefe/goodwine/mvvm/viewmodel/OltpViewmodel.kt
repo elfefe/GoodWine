@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
 class OltpViewmodel : ViewModel() {
-    private val repository = BaseApplication.instance.oltpRepository
+    private val repository = BaseApplication.instance.mediator
 
     private val _bottlesLivedata = MutableLiveData<List<Bottle>>()
     val bottlesLivedata: LiveData<List<Bottle>>

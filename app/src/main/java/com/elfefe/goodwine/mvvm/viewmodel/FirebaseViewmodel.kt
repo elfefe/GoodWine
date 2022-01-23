@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
 class FirebaseViewmodel: ViewModel() {
-    private val repository = BaseApplication.instance.firebaseRepository
+    private val repository = BaseApplication.instance.mediator
 
     private val _connectionLivedata = MutableLiveData<Connection>()
     val connectionLivedata: LiveData<Connection>
@@ -38,7 +38,7 @@ class FirebaseViewmodel: ViewModel() {
         if (repository.user?.isEmailVerified != true) repository.checkConnection()
     }
 
-    fun connectAnonymoulsy() = repository.connectAnonymous()
+    fun connectAnonymoulsy() = repository.connectAnonymoulsy()
 
     fun connectFacebook(activity: ComponentActivity) = repository.connectFacebook(activity)
 
@@ -55,5 +55,5 @@ class FirebaseViewmodel: ViewModel() {
         onFailure: (Exception?) -> Unit
     ) = repository.connectPhone(activity, onSuccess, onFailure)
 
-    fun syncBottles() = repository.syncData(listOf())
+    fun syncBottles() {}
 }
