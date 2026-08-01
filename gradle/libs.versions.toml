@@ -28,6 +28,9 @@ ratingbar = "1.2.3"
 junit = "4.13.2"
 androidxJunit = "1.2.1"
 espresso = "3.6.1"
+testCore = "1.6.1"
+testRunner = "1.6.2"
+coroutines = "1.9.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -77,6 +80,9 @@ compose-ratingbar = { module = "io.github.a914-gowtham:compose-ratingbar", versi
 junit = { module = "junit:junit", version.ref = "junit" }
 androidx-junit = { module = "androidx.test.ext:junit", version.ref = "androidxJunit" }
 espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso" }
+androidx-test-core = { module = "androidx.test:core-ktx", version.ref = "testCore" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "testRunner" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

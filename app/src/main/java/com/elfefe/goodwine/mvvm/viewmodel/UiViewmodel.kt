@@ -23,12 +23,21 @@ class UiViewmodel: ViewModel() {
     val permittedLivedata: LiveData<Boolean>
         get() = _permittedLivedata
 
+    /** Vrai quand l'accès caméra a été refusé : l'app reste utilisable, sans prise de vue. */
+    private val _permissionDeniedLivedata = MutableLiveData(false)
+    val permissionDeniedLivedata: LiveData<Boolean>
+        get() = _permissionDeniedLivedata
+
     private val _descriptionItemLivedata = MutableLiveData<TutorialItem>()
     val descriptionItemLivedata: LiveData<TutorialItem>
         get() = _descriptionItemLivedata
 
     fun setPermitted(value: Boolean) {
         _permittedLivedata.value = value
+    }
+
+    fun setPermissionDenied(value: Boolean) {
+        _permissionDeniedLivedata.value = value
     }
 
     fun setBottle(value: Boolean) {

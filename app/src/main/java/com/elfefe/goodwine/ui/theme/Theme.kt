@@ -35,8 +35,10 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun GoodWineTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    // Le thème dynamique d'Android 12+ remplace toute la palette par celle du fond d'écran :
+    // le bordeaux de l'app disparaissait, et les couleurs choisies pour le texte des fiches
+    // n'avaient plus le contraste prévu. On garde la palette du projet.
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

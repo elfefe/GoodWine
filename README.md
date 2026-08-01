@@ -13,9 +13,10 @@ on la commente — à la voix si l'on veut — et on retrouve sa cave triée par
 - **Fiche bouteille** : photo, description, note de 0 à 5 (par demi-étoiles), date d'ajout.
 - **Dictée de la description** via la reconnaissance vocale d'Android.
 - **Cave locale** en base Room, triable par note ou par date, dans les deux sens.
+- **Suppression** d'une fiche, localement et dans le cloud.
 - **Comptes Firebase** : anonyme, e-mail, Google, Facebook.
-- **Synchronisation Firestore** des fiches. *Les photos ne sont pas encore synchronisées :
-  seul le chemin local est envoyé.* Voir « Limites connues ».
+- **Synchronisation Firestore** des fiches, **photo comprise** : l'image part dans Firebase
+  Storage et c'est son URL qui est enregistrée.
 
 ## Compiler
 
@@ -71,19 +72,38 @@ app/src/main/java/com/elfefe/goodwine/
 └── utils/
 ```
 
+### Connexion Facebook
+
+Elle reste inactive tant que `facebook_client_token` n'est pas renseigné dans
+`res/values/strings.xml` (console Facebook → Paramètres → Avancé → Jeton client). Depuis sa
+version 13, le SDK **lève** au démarrage si ce jeton manque : l'app le détecte et se passe de
+Facebook plutôt que de refuser de démarrer.
+
+## Tests
+
+```bash
+./gradlew test                        # 16 tests unitaires, sans appareil
+./gradlew connectedDebugAndroidTest   # 9 tests Room sur émulateur ou téléphone
+```
+
+Les tests unitaires portent sur `BottleSync` — les règles de synchronisation, extraites du SDK
+Firebase pour être vérifiables — et sur les conversions entre l'entité Room et le parcelable.
+Les tests instrumentés vérifient les tris SQL de la cave, l'écrasement d'une fiche connue et la
+suppression, sur une base Room en mémoire.
+
 ## Limites connues
 
-Relevées à la lecture du code lors de la reprise, et suivies dans Jira (epic GEN-82) :
+Suivies dans Jira (epic GEN-82) :
 
-- Les **photos ne sont pas synchronisées** : `Bottle.picture` porte un chemin local, envoyé tel quel
-  dans Firestore. `firebase-storage` est déclaré mais jamais appelé.
-- `syncData()` **échoue sur une cave vide** (Firestore refuse un `whereNotIn` avec une liste vide).
-- **Pas de suppression de bouteille** depuis l'interface, bien que `BottleDao.delete()` existe.
-- L'authentification **par téléphone** lit le numéro via `TelephonyManager.line1Number`, qui ne
-  renvoie plus rien sur la plupart des appareils depuis Android 10.
-- Les tests sont encore ceux du gabarit d'Android Studio.
+- L'authentification **par téléphone** attend désormais que l'appelant fournisse le numéro,
+  mais **aucun écran ne l'expose** : la fonction existe sans point d'entrée.
+- La synchronisation est **manuelle et à sens unique par écran** : elle part à l'ouverture de la
+  liste, sans résolution de conflit si la même fiche a changé des deux côtés.
+- `MainActivity` fait 900 lignes : toute l'interface y tient, et plusieurs composables posent
+  leurs observateurs `LiveData` dans le corps de la composition.
+- La reconnaissance vocale n'est **pas testée automatiquement**.
 
-Le détail complet, avec les messages d'erreur d'origine, est dans [DIAGNOSTIC.md](DIAGNOSTIC.md).
+Le détail, avec les messages d'erreur d'origine, est dans [DIAGNOSTIC.md](DIAGNOSTIC.md).
 
 ## Licence
 

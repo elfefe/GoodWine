@@ -2,7 +2,16 @@
     <string name="app_name">GoodWine</string>
     <string name="facebook_app_id">3059236311018256</string>
     <string name="fb_login_protocol_scheme">fb3059236311018256</string>
+    <!-- À renseigner depuis la console Facebook (Paramètres > Avancé > Jeton client) pour
+         activer la connexion Facebook. Laissé vide, le SDK n'est pas initialisé. -->
+    <string name="facebook_client_token" translatable="false"></string>
     <string name="client_id">1084474255415-666rsbbp9kvn3sqptklhv0clmmtu35ut.apps.googleusercontent.com</string>
+    <string name="firebase_unavailable">Cloud sync is unavailable: this build has no Firebase configuration.</string>
+    <string name="connection_phone_empty">Please enter a phone number.</string>
+    <string name="permission_camera_required">Camera access is required to photograph a label.</string>
+    <string name="bottle_picture">Bottle picture</string>
+    <string name="bottle_no_picture">No picture</string>
+    <string name="bottle_delete">Delete this bottle</string>
     <string name="connection_google_failure">Failed to connect with google account.</string>
     <string name="connection_create_account_failure">Failed to create Account.</string>
     <string name="connection_connect_account_failure">Failed to connect Account.</string>

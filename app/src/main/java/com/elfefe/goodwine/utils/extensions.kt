@@ -15,14 +15,21 @@ import java.io.FileOutputStream
 import java.util.*
 
 
-val app = BaseApplication.instance
+// Ces deux propriétés étaient initialisées à plat, au chargement du fichier. Elles ne
+// fonctionnaient que parce que BaseApplication.instance était affecté une ligne avant le
+// premier accès : toute réorganisation de onCreate provoquait une
+// UninitializedPropertyAccessException au démarrage. En `get()`, elles sont lues au moment
+// où on s'en sert.
+val app: BaseApplication
+    get() = BaseApplication.instance
 
 fun resString(id: Int) = BaseApplication.instance.getString(id)
 
 val timestamp: Long
     get() = Date().time
 
-val prefs = app.getSharedPreferences("Default", Context.MODE_PRIVATE)
+val prefs: SharedPreferences
+    get() = app.getSharedPreferences("Default", Context.MODE_PRIVATE)
 
 const val FIRST_USE_TAG = "First use tag"
 
