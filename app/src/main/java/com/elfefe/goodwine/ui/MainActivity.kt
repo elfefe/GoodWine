@@ -88,8 +88,8 @@ import com.facebook.FacebookException
 import com.facebook.login.LoginManager
 import com.facebook.login.LoginResult
 import com.facebook.login.widget.LoginButton
-import com.facebook.share.widget.LikeView
 import com.gowtham.ratingbar.RatingBar
+import com.gowtham.ratingbar.RatingBarConfig
 import com.gowtham.ratingbar.StepSize
 import kotlin.math.absoluteValue
 
@@ -402,9 +402,9 @@ class MainActivity : ComponentActivity() {
                                     )
                                     RatingBar(
                                         value = bottle.rating,
+                                        config = RatingBarConfig().hideInactiveStars(true),
                                         onValueChange = {},
-                                        onRatingChanged = {},
-                                        hideInactiveStars = true
+                                        onRatingChanged = {}
                                     )
                                 }
                             }
@@ -740,8 +740,9 @@ class MainActivity : ComponentActivity() {
                         RatingBar(
                             modifier = Modifier,
                             value = rating,
-                            numStars = 5,
-                            stepSize = StepSize.HALF,
+                            config = RatingBarConfig()
+                                .numStars(5)
+                                .stepSize(StepSize.HALF),
                             onValueChange = { rating = it },
                             onRatingChanged = {
                                 asRating = true

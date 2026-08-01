@@ -83,3 +83,15 @@ lint/generated/
 lint/outputs/
 lint/tmp/
 # lint/reports/
+
+# Configuration Firebase : propre à chaque compte, jamais versionnée.
+# Un gabarit est fourni dans app/google-services.json.example
+app/google-services.json
+
+# Signature : keystores et mots de passe restent hors du dépôt
+*.jks
+*.keystore
+keystore.properties
+
+# IDE
+.idea/

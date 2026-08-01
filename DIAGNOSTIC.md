@@ -59,13 +59,21 @@ Could not determine the dependencies of task ':app:compileDebugJavaWithJavac'.
 Comportement normal (`local.properties` est ignoré par git). Non bloquant, mentionné pour
 l'ordre des étapes.
 
+Attention au format : un `sdk.dir` écrit avec des antislashs simples
+(`sdk.dir=C\:\Users\…`) est lu comme une séquence d'échappement invalide et produit un
+`java.io.IOException: La syntaxe du nom de fichier, de répertoire ou de volume est incorrecte`
+qu'on impute facilement à autre chose. Écrire des slashs : `sdk.dir=C:/Users/…`.
+
 ### 2.3 Le `signingConfig` de debug pointe vers un chemin qui n'existe pas — BLOQUANT
 
 ```
 * What went wrong:
-Could not determine the dependencies of task ':app:compileDebugJavaWithJavac'.
-> java.io.IOException: La syntaxe du nom de fichier, de répertoire ou de volume est incorrecte
+Execution failed for task ':app:validateSigningDebug'.
+> Keystore file 'X:\Projects\GoodWine\app\home\celadodc-rswl.com\felix.boulereiff\Certs\Android\goodwine\goodwine.jks'
+  not found for signing config 'debug'.
 ```
+
+Le chemin Linux absolu est réinterprété comme relatif au module `app/`, d'où ce chemin composite.
 
 Origine, dans `app/build.gradle` :
 
