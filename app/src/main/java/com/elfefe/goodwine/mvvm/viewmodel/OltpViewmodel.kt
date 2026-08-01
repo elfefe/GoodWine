@@ -29,4 +29,6 @@ class OltpViewmodel : ViewModel() {
     fun updateBottlesDateOrder(asc: Boolean) = repository.updateBottlesDateOrder(asc)
 
     fun saveBottle(bottle: Bottle) = repository.saveBottle(bottle)
+
+    fun deleteBottle(bottle: Bottle) = repository.deleteBottle(bottle)
 }

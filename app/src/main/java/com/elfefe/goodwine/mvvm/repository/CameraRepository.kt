@@ -31,6 +31,11 @@ class CameraRepository {
         get() = _captureFlow
 
     fun startCamera(lifecycleOwner: LifecycleOwner) {
+        if (previewView == null) {
+            // Échouait en silence quand l'appel précédait l'affichage de la vue.
+            Log.w(javaClass.simpleName, "Aucune PreviewView enregistrée : caméra non démarrée")
+            return
+        }
         previewView?.let {
             cameraProviderFuture.addListener({
                 provider = cameraProviderFuture.get()

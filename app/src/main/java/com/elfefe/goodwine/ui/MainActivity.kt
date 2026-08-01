@@ -61,6 +61,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
@@ -88,8 +89,8 @@ import com.facebook.FacebookException
 import com.facebook.login.LoginManager
 import com.facebook.login.LoginResult
 import com.facebook.login.widget.LoginButton
-import com.facebook.share.widget.LikeView
 import com.gowtham.ratingbar.RatingBar
+import com.gowtham.ratingbar.RatingBarConfig
 import com.gowtham.ratingbar.StepSize
 import kotlin.math.absoluteValue
 
@@ -104,11 +105,14 @@ class MainActivity : ComponentActivity() {
     private lateinit var keyboardController: SoftwareKeyboardController
     private lateinit var localFocus: FocusManager
 
+    // Le retour de la demande relançait askPermission, qui relançait la demande : sur un refus,
+    // l'app tournait en boucle sans jamais afficher quoi que ce soit. On statue une fois.
     private val registerPermission =
         registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { permissions ->
-            askPermission(permissions.keys.toTypedArray())
+            if (permissions[CAMERA] == false) uiViewmodel.setPermissionDenied(true)
+            uiViewmodel.setPermitted(true)
         }
 
     @SuppressLint("WrongConstant")
@@ -272,7 +276,9 @@ class MainActivity : ComponentActivity() {
             isAddBottle = it
         }
 
-        firebaseViewmodel.syncBottles()
+        // Cet appel était dans le corps du composable : il partait à CHAQUE recomposition,
+        // soit un aller-retour Firestore par image d'animation. Une seule fois, à l'entrée.
+        LaunchedEffect(Unit) { firebaseViewmodel.syncBottles() }
 
         ConstraintLayout(
             ConstraintSet {
@@ -349,7 +355,7 @@ class MainActivity : ComponentActivity() {
                     .padding(16.dp, 16.dp, 16.dp, 0.dp)
                     .fillMaxSize(),
                 content = {
-                    items(bottles) { bottle ->
+                    items(bottles, key = { it.id }) { bottle ->
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Card(
@@ -365,19 +371,35 @@ class MainActivity : ComponentActivity() {
                                     .padding(8.dp)
                                     .fillMaxSize()
                             ) {
-                                val picture: ImageBitmap by remember {
-                                    mutableStateOf(
-                                        BitmapFactory.decodeFile(bottle.picture).asImageBitmap()
-                                    )
+                                // decodeFile rend null dès que le fichier manque — photo
+                                // effacée, ou fiche venue du cloud dont l'URL n'est pas un
+                                // chemin local. L'appel à asImageBitmap() plantait alors la
+                                // liste entière. La clé du remember était en plus absente :
+                                // une fiche remplacée gardait l'image de la précédente.
+                                val picture: ImageBitmap? = remember(bottle.picture) {
+                                    BitmapFactory.decodeFile(bottle.picture)?.asImageBitmap()
                                 }
-                                Image(
+                                if (picture != null) Image(
                                     bitmap = picture,
-                                    contentDescription = "Bottle picture",
+                                    contentDescription = stringResource(R.string.bottle_picture),
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(8.dp))
                                         .wrapContentSize(),
                                     contentScale = ContentScale.Fit
-                                )
+                                ) else Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .aspectRatio(.75f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Photo,
+                                        contentDescription = stringResource(R.string.bottle_no_picture),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column(
                                     modifier = Modifier
@@ -398,14 +420,29 @@ class MainActivity : ComponentActivity() {
                                             .padding(8.dp)
                                             .fillMaxWidth()
                                             .fillMaxHeight(.8f),
-                                        style = TextStyle(color = MaterialTheme.colorScheme.onPrimary)
+                                        style = TextStyle(color = MaterialTheme.colorScheme.onSurface)
                                     )
-                                    RatingBar(
-                                        value = bottle.rating,
-                                        onValueChange = {},
-                                        onRatingChanged = {},
-                                        hideInactiveStars = true
-                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RatingBar(
+                                            value = bottle.rating,
+                                            config = RatingBarConfig().hideInactiveStars(true),
+                                            onValueChange = {},
+                                            onRatingChanged = {}
+                                        )
+                                        // BottleDao.delete() existait depuis l'origine sans
+                                        // qu'aucun écran ne l'appelle.
+                                        IconButton(onClick = { oltpViewmodel.deleteBottle(bottle) }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = stringResource(R.string.bottle_delete),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -726,7 +763,7 @@ class MainActivity : ComponentActivity() {
                         keyboardActions = KeyboardActions(
                             onDone = { hideKeyboard() }),
                         colors = TextFieldDefaults.textFieldColors(
-                            textColor = MaterialTheme.colorScheme.onPrimary,
+                            textColor = MaterialTheme.colorScheme.onSurface,
                             backgroundColor = Color.Transparent
                         )
                     )
@@ -740,8 +777,9 @@ class MainActivity : ComponentActivity() {
                         RatingBar(
                             modifier = Modifier,
                             value = rating,
-                            numStars = 5,
-                            stepSize = StepSize.HALF,
+                            config = RatingBarConfig()
+                                .numStars(5)
+                                .stepSize(StepSize.HALF),
                             onValueChange = { rating = it },
                             onRatingChanged = {
                                 asRating = true
@@ -804,15 +842,31 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun Camera(modifier: Modifier = Modifier) {
+        // L'aperçu ne s'affichait jamais : startCamera() partait depuis FloatingButton, à
+        // l'observation de addBottleLivedata, donc AVANT que ce composable n'ait enregistré
+        // son PreviewView. CameraRepository.startCamera testait `previewView?.let`, trouvait
+        // null et ne faisait rien — en silence. La caméra est démarrée ici, une fois la vue
+        // effectivement disponible.
+        var previewReady by remember { mutableStateOf(false) }
+
         AndroidViewBinding(
             factory = CameraViewBinding::inflate,
             modifier = modifier
         ) {
             cameraViewmodel.addPreviewView(camera)
+            previewReady = true
             buttonCamera.setOnClickListener {
                 camera.bitmap?.let { image -> cameraViewmodel.setPicture(image) }
                 cameraViewmodel.stopCamera()
             }
+        }
+
+        LaunchedEffect(previewReady) {
+            if (previewReady) cameraViewmodel.startCamera(this@MainActivity)
+        }
+
+        DisposableEffect(Unit) {
+            onDispose { cameraViewmodel.stopCamera() }
         }
     }
 }
