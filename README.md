@@ -1,5 +1,7 @@
 # GoodWine
 
+[![Android CI](https://github.com/elfefe/GoodWine/actions/workflows/android.yml/badge.svg)](https://github.com/elfefe/GoodWine/actions/workflows/android.yml)
+
 Application Android de cave à vin : on photographie l'étiquette d'une bouteille, on la note,
 on la commente — à la voix si l'on veut — et on retrouve sa cave triée par note ou par date.
 
